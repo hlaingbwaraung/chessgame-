@@ -1,5 +1,20 @@
 <template>
   <div id="app" class="app-container">
+    <!-- Checkmate/Stalemate Modal -->
+    <transition name="modal-fade">
+      <div v-if="showCheckmateModal" class="modal-overlay">
+        <div class="checkmate-modal">
+          <div class="fireworks-container" v-if="game.gameStatus === 'checkmate'">
+            <div class="firework" v-for="n in 6" :key="n" :style="getFireworkStyle(n)"></div>
+          </div>
+          <div class="modal-emoji">{{ getGameEndEmoji() }}</div>
+          <h2 class="modal-title">{{ getGameEndTitle() }}</h2>
+          <p class="modal-message">{{ getGameEndMessage() }}</p>
+          <button @click="resetGame" class="modal-btn">Play Again</button>
+        </div>
+      </div>
+    </transition>
+
     <!-- Game End Modal -->
     <transition name="modal-fade">
       <div v-if="showGameEndModal" class="modal-overlay">
@@ -48,9 +63,17 @@
       </div>
     </transition>
 
+    <!-- Check Notification -->
+    <transition name="notification-slide">
+      <div v-if="game.gameStatus === 'check'" class="check-notification">
+        <span class="notification-icon">⚠️</span>
+        <span class="notification-text">CHECK! King is under attack!</span>
+      </div>
+    </transition>
+
     <header class="header">
       <div class="header-top">
-        <h1>♟ AUNG Chess</h1>
+        <h1>♟ AUNG CHESS</h1>
         <button class="hamburger" @click="menuOpen = !menuOpen" :class="{ active: menuOpen }">
           <span></span>
           <span></span>
@@ -198,6 +221,7 @@ export default {
       timerRunning: false,
       timeOptions: [60, 180, 300, 600, 900],
       showGameEndModal: false,
+      showCheckmateModal: false,
       winner: '',
       menuOpen: false,
       window: window,
@@ -230,6 +254,13 @@ export default {
       }
     });
 
+    // Watch for game status changes (checkmate/stalemate)
+    this.$watch('game.gameStatus', (newVal) => {
+      if (newVal === 'checkmate' || newVal === 'stalemate') {
+        this.onGameEnd();
+      }
+    });
+
     window.addEventListener('resize', () => {
       if (window.innerWidth > 768) {
         this.menuOpen = false;
@@ -242,6 +273,7 @@ export default {
       this.stopTimer();
       this.timerRunning = false;
       this.showGameEndModal = false;
+      this.showCheckmateModal = false;
       this.winner = '';
       this.menuOpen = false;
       this.$forceUpdate();
@@ -270,6 +302,8 @@ export default {
       if (this.game.gameStatus === 'timeout') {
         this.winner = this.game.currentPlayer === 'white' ? 'Black' : 'White';
         this.showGameEndModal = true;
+      } else if (this.game.gameStatus === 'checkmate' || this.game.gameStatus === 'stalemate') {
+        this.showCheckmateModal = true;
       }
       
       this.$forceUpdate();
@@ -368,6 +402,47 @@ export default {
           }
         }, 300);
       }
+    },
+    getGameEndTitle() {
+      if (this.game.gameStatus === 'checkmate') {
+        const winner = this.game.winner === 'white' ? 'White' : 'Black';
+        return `${winner} Wins!`;
+      } else if (this.game.gameStatus === 'stalemate') {
+        return 'Stalemate!';
+      }
+      return 'Game Over';
+    },
+    getGameEndMessage() {
+      if (this.game.gameStatus === 'checkmate') {
+        const loser = this.game.winner === 'white' ? 'Black' : 'White';
+        return `Checkmate! ${loser}'s KING arrested.`;
+      } else if (this.game.gameStatus === 'stalemate') {
+        return 'No legal moves available, but king is not in check.';
+      }
+      return '';
+    },
+    getGameEndEmoji() {
+      if (this.game.gameStatus === 'checkmate') {
+        return '👑';
+      } else if (this.game.gameStatus === 'stalemate') {
+        return '🤝';
+      }
+      return '🏁';
+    },
+    getFireworkStyle(n) {
+      // Random positions and delays for fireworks
+      const positions = [
+        { left: '10%', top: '20%' },
+        { left: '80%', top: '30%' },
+        { left: '20%', top: '60%' },
+        { left: '70%', top: '70%' },
+        { left: '50%', top: '40%' },
+        { left: '90%', top: '50%' }
+      ];
+      return {
+        ...positions[n - 1],
+        animationDelay: `${(n - 1) * 0.3}s`
+      };
     }
   }
 }
@@ -940,6 +1015,75 @@ body {
   border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
+.checkmate-modal {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 20px;
+  padding: 50px 40px;
+  text-align: center;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.4);
+  max-width: 500px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: visible;
+}
+
+.fireworks-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.firework {
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  animation: fireworkExplode 1.5s ease-out infinite;
+}
+
+@keyframes fireworkExplode {
+  0% {
+    box-shadow: 
+      0 0 0 0 #ffd700,
+      0 0 0 0 #ff6b6b,
+      0 0 0 0 #4ecdc4,
+      0 0 0 0 #a78bfa,
+      0 0 0 0 #f472b6;
+    transform: scale(0);
+    opacity: 1;
+  }
+  20% {
+    box-shadow: 
+      0 -50px 0 5px #ffd700,
+      50px 0 0 5px #ff6b6b,
+      0 50px 0 5px #4ecdc4,
+      -50px 0 0 5px #a78bfa,
+      35px -35px 0 5px #f472b6,
+      -35px 35px 0 5px #60a5fa,
+      35px 35px 0 5px #fbbf24,
+      -35px -35px 0 5px #34d399;
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    box-shadow: 
+      0 -100px 0 10px #ffd700,
+      100px 0 0 10px #ff6b6b,
+      0 100px 0 10px #4ecdc4,
+      -100px 0 0 10px #a78bfa,
+      70px -70px 0 10px #f472b6,
+      -70px 70px 0 10px #60a5fa,
+      70px 70px 0 10px #fbbf24,
+      -70px -70px 0 10px #34d399;
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
 .promotion-modal {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 20px;
@@ -1110,6 +1254,38 @@ body {
   letter-spacing: 0.5px;
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.check-notification {
+  position: fixed;
+  top: 160px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  color: white;
+  padding: 14px 24px;
+  border-radius: 50px;
+  box-shadow: 0 8px 25px rgba(255, 107, 107, 0.5);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  z-index: 600;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  animation: checkPulse 1s infinite;
+}
+
+@keyframes checkPulse {
+  0%, 100% { 
+    transform: translateX(-50%) scale(1);
+    box-shadow: 0 8px 25px rgba(255, 107, 107, 0.5);
+  }
+  50% { 
+    transform: translateX(-50%) scale(1.05);
+    box-shadow: 0 12px 35px rgba(255, 107, 107, 0.7);
+  }
 }
 
 .notification-icon {

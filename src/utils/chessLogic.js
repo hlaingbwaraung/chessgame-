@@ -14,6 +14,7 @@ export class ChessGame {
     this.timerInterval = null;
     this.lastMoveTime = Date.now();
     this.pendingPromotion = null;
+    this.winner = null;
   }
 
   initializeBoard() {
@@ -332,6 +333,18 @@ export class ChessGame {
     this.selectedSquare = null;
     this.validMoves = [];
 
+    // Check for checkmate or stalemate
+    if (this.isCheckmate(this.currentPlayer)) {
+      this.gameStatus = 'checkmate';
+      this.winner = this.currentPlayer === 'white' ? 'black' : 'white';
+    } else if (this.isStalemate(this.currentPlayer)) {
+      this.gameStatus = 'stalemate';
+    } else if (this.isKingInCheck(this.currentPlayer)) {
+      this.gameStatus = 'check';
+    } else {
+      this.gameStatus = 'playing';
+    }
+
     return true;
   }
 
@@ -345,6 +358,18 @@ export class ChessGame {
       this.selectedSquare = null;
       this.validMoves = [];
       this.pendingPromotion = null;
+      
+      // Check for checkmate or stalemate
+      if (this.isCheckmate(this.currentPlayer)) {
+        this.gameStatus = 'checkmate';
+        this.winner = this.currentPlayer === 'white' ? 'black' : 'white';
+      } else if (this.isStalemate(this.currentPlayer)) {
+        this.gameStatus = 'stalemate';
+      } else if (this.isKingInCheck(this.currentPlayer)) {
+        this.gameStatus = 'check';
+      } else {
+        this.gameStatus = 'playing';
+      }
       
       return true;
     }
@@ -385,6 +410,42 @@ export class ChessGame {
     }
   }
 
+  isCheckmate(player) {
+    // First check if king is in check
+    if (!this.isKingInCheck(player)) {
+      return false;
+    }
+    
+    // Check if there are any valid moves
+    return this.getAllValidMoves(player).length === 0;
+  }
+
+  isStalemate(player) {
+    // Not in check but no valid moves
+    if (this.isKingInCheck(player)) {
+      return false;
+    }
+    
+    return this.getAllValidMoves(player).length === 0;
+  }
+
+  isKingInCheck(player) {
+    // Find king position
+    let kingPos = null;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (this.board[r][c]?.type === 'king' && this.board[r][c]?.color === player) {
+          kingPos = { row: r, col: c };
+          break;
+        }
+      }
+      if (kingPos) break;
+    }
+    
+    if (!kingPos) return false;
+    return this.isSquareUnderAttack(kingPos.row, kingPos.col, player);
+  }
+
   selectSquare(row, col) {
     if (this.selectedSquare?.row === row && this.selectedSquare?.col === col) {
       this.selectedSquare = null;
@@ -410,6 +471,7 @@ export class ChessGame {
     this.gameStatus = 'playing';
     this.whiteTime = this.timeLimit;
     this.blackTime = this.timeLimit;
+    this.winner = null;
     this.stopTimer();
   }
 
